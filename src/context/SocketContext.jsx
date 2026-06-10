@@ -30,7 +30,7 @@ export function SocketProvider({
 
     const socketInstance =
       io(
-        "http://localhost:5000",
+        import.meta.env.VITE_SOCKET_URL,
         {
           auth: {
             token
