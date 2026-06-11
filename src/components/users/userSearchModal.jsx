@@ -68,6 +68,11 @@ export default function UserSearchModal({
         const conversation =
           response.data.data;
 
+        console.log(
+  "NEW CONVERSATION",
+  conversation
+);
+        
         onConversationCreated(
           conversation
         );
