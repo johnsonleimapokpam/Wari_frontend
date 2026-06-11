@@ -220,6 +220,7 @@ export default function ChatWindow({
         <div>
 
           <h2>
+
             {
               conversation
                 .otherParticipant

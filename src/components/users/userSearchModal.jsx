@@ -35,6 +35,8 @@ export default function UserSearchModal({
             `/users/search?q=${value}`
           );
 
+          console.log(response);
+
         setUsers(
           response.data.data
         );
