@@ -212,6 +212,8 @@ export default function ChatWindow({
     );
   }
 
+  console.log("conversation");
+
   return (
     <main className="chat-window">
 
