@@ -1,38 +1,23 @@
-import formatLastSeen
-from "../../utils/formatLastSeen";
+import formatLastSeen from "../../utils/formatLastSeen";
 
-export default function PresenceBadge({
-  presence
-}) {
-
-  if (!presence) {
-    return null;
-  }
+export default function PresenceBadge({ presence }) {
+  if (!presence) return null;
 
   if (presence.isOnline) {
     return (
-      <span>
-        🟢 Online
-      </span>
-    );
-  }
-
-  if (!presence.lastSeen) {
-    return (
-      <span>
-        Offline
-      </span>
+      <div className="chat-header-status">
+        <span className="status-dot online" />
+        <span className="status-text online">Online</span>
+      </div>
     );
   }
 
   return (
-    <span>
-      Last seen{" "}
-      {
-        formatLastSeen(
-          presence.lastSeen
-        )
-      }
-    </span>
+    <div className="chat-header-status">
+      <span className="status-dot offline" />
+      <span className="status-text offline">
+        {presence.lastSeen ? `Last seen ${formatLastSeen(presence.lastSeen)}` : "Offline"}
+      </span>
+    </div>
   );
 }

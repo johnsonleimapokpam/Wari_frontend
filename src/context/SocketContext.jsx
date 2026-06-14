@@ -1,65 +1,25 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState
-} from "react";
-
+import { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
-
 import { useAuth } from "./AuthContext";
 
-const SocketContext =
-  createContext();
+const SocketContext = createContext();
 
-export function SocketProvider({
-  children
-}) {
-
-  const { token } =
-    useAuth();
-
-  const [
-    socket,
-    setSocket
-  ] = useState(null);
+export function SocketProvider({ children }) {
+  const { token } = useAuth();
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-
     if (!token) return;
-
-    const socketInstance =
-      io(
-        import.meta.env.VITE_SOCKET_URL,
-        {
-          auth: {
-            token
-          }
-        }
-      );
-    socketInstance.onAny((event, data) => {
-      console.log("SOCKET EVENT:", event);
-      console.log(data);
-    });
-    
-    setSocket(
-      socketInstance
-    );
-
-    return () => {
-      socketInstance.disconnect();
-    };
-
+    const socketInstance = io(import.meta.env.VITE_SOCKET_URL, { auth: { token } });
+    setSocket(socketInstance);
+    return () => socketInstance.disconnect();
   }, [token]);
 
   return (
-    <SocketContext.Provider
-      value={{ socket }}
-    >
+    <SocketContext.Provider value={{ socket }}>
       {children}
     </SocketContext.Provider>
   );
 }
 
-export const useSocket = () =>
-  useContext(SocketContext);
+export const useSocket = () => useContext(SocketContext);

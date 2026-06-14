@@ -1,262 +1,116 @@
-import { useEffect } from "react";
-
+import { useEffect, useState } from "react";
 import { useSocket } from "../../context/SocketContext";
-
 import useMessages from "../../hooks/useMessage";
 import usePresence from "../../hooks/usePresence";
-
 import MessageList from "../chat/MessageList";
 import MessageInput from "../chat/MessageInput";
-
 import PresenceBadge from "../presence/PresenceBadge";
 
-export default function ChatWindow({
-  conversation,
-  setConversations
-}) {
+const AVATAR_COLORS = ["av-purple", "av-teal"];
+function getInitials(p) {
+  return `${p?.firstName?.[0] ?? ""}${p?.lastName?.[0] ?? ""}`.toUpperCase();
+}
+function getAvatarColor(id) {
+  return AVATAR_COLORS[(id?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length];
+}
 
+export default function ChatWindow({ conversation, setConversations }) {
   const { socket } = useSocket();
+  const { messages, setMessages, loading } = useMessages(conversation?.id);
+  const presence = usePresence(conversation?.otherParticipant?.id);
+  const [typingUser, setTypingUser] = useState(null);
 
-  const {
-    messages,
-    setMessages,
-    loading
-  } = useMessages(
-    conversation?.id
-  );
-
-  const presence = usePresence(
-    conversation?.otherParticipant?.id
-  );
-
-  // Join conversation room
   useEffect(() => {
-
-    if (!socket || !conversation) {
-      return;
-    }
-
-    socket.emit(
-      "join_conversation",
-      {
-        conversationId: conversation.id
-      },
-      (response) => {
-        console.log(
-          "Joined room",
-          response
-        );
-      }
-    );
-
+    if (!socket || !conversation) return;
+    socket.emit("join_conversation", { conversationId: conversation.id });
   }, [socket, conversation]);
 
-  // Receive new messages
   useEffect(() => {
+    if (!socket) return;
 
-    if (!socket) {
-      return;
-    }
-
-    const handleMessage =
-      (payload) => {
-
-        console.log(
-          "MESSAGE RECEIVED",
-          payload
+    const handleMessage = (payload) => {
+      const message = payload.message;
+      setMessages((prev) => [...prev, message]);
+      setConversations((prev) => {
+        const updated = prev.map((c) =>
+          c.id === message.conversationId ? { ...c, lastMessage: message } : c
         );
-
-        const message =
-          payload.message;
-
-        // Update open chat
-        setMessages(
-          (prev) => [
-            ...prev,
-            message
-          ]
+        updated.sort((a, b) =>
+          new Date(b.lastMessage?.createdAt || 0) - new Date(a.lastMessage?.createdAt || 0)
         );
-
-        // Update sidebar preview
-        setConversations(
-          (prev) => {
-
-            const updated =
-              prev.map(
-                (conversation) => {
-
-                  if (
-                    conversation.id ===
-                    message.conversationId
-                  ) {
-
-                    return {
-                      ...conversation,
-                      lastMessage:
-                        message
-                    };
-                  }
-
-                  return conversation;
-                }
-              );
-
-            // Move active conversation to top
-            updated.sort(
-              (a, b) =>
-                new Date(
-                  b.lastMessage?.createdAt || 0
-                ) -
-                new Date(
-                  a.lastMessage?.createdAt || 0
-                )
-            );
-
-            return updated;
-          }
-        );
-      };
-
-    socket.on(
-      "message_received",
-      handleMessage
-    );
-
-    return () => {
-
-      socket.off(
-        "message_received",
-        handleMessage
-      );
+        return updated;
+      });
     };
 
-  }, [
-    socket,
-    setMessages,
-    setConversations
-  ]);
-
-  // Status updates
-  useEffect(() => {
-
-    if (!socket) {
-      return;
-    }
-
-    const handleStatusUpdate =
-      (payload) => {
-
-        console.log(
-          "STATUS UPDATE",
-          payload
-        );
-
-      };
-
-    socket.on(
-      "message_status_updated",
-      handleStatusUpdate
-    );
-
-    return () => {
-
-      socket.off(
-        "message_status_updated",
-        handleStatusUpdate
-      );
-    };
-
-  }, [socket]);
-
-  const handleSendMessage =
-    (body) => {
-
-      if (!socket || !conversation) {
-        return;
+    const handleTyping = (payload) => {
+      if (payload.conversationId === conversation?.id) {
+        setTypingUser(payload.isTyping ? payload.userId : null);
       }
-
-      socket.emit(
-        "send_message",
-        {
-          conversationId:
-            conversation.id,
-          body,
-          clientMessageId:
-            crypto.randomUUID()
-        },
-        (response) => {
-
-          console.log(
-            "SEND ACK",
-            response
-          );
-
-         if (response?.success) {
-
-            console.log(
-              "Message persisted",
-              response.message.id
-            );
-
-          }
-        }
-      );
     };
+
+    socket.on("message_received", handleMessage);
+    socket.on("typing_update", handleTyping);
+
+    return () => {
+      socket.off("message_received", handleMessage);
+      socket.off("typing_update", handleTyping);
+    };
+  }, [socket, conversation, setMessages, setConversations]);
+
+  const handleSendMessage = (body) => {
+    if (!socket || !conversation) return;
+    socket.emit("send_message", {
+      conversationId: conversation.id,
+      body,
+      clientMessageId: crypto.randomUUID(),
+    });
+  };
 
   if (!conversation) {
-
     return (
-      <main className="chat-window">
-        Select a conversation
+      <main className="chat-window-empty">
+        <div className="chat-window-empty-icon">💬</div>
+        <p>Select a conversation to start chatting</p>
       </main>
     );
   }
 
+  const participant = conversation.otherParticipant;
+
   return (
     <main className="chat-window">
-
       <div className="chat-header">
-
-        <div>
-
-          <h2>
-
-            {
-              conversation
-                .otherParticipant
-                .firstName
-            }{" "}
-            {
-              conversation
-                .otherParticipant
-                .lastName
-            }
-          </h2>
-
-          <PresenceBadge
-            presence={presence}
-          />
-
+        <div className={`conv-avatar ${getAvatarColor(participant?.id)}`} style={{ width: 36, height: 36, fontSize: 13 }}>
+          {getInitials(participant)}
         </div>
-
+        <div className="chat-header-info">
+          <div className="chat-header-name">
+            {participant?.firstName} {participant?.lastName}
+          </div>
+          <PresenceBadge presence={presence} />
+        </div>
       </div>
 
-      {
-        loading ? (
-          <p>Loading...</p>
-        ) : (
-          <MessageList
-            messages={messages}
-          />
-        )
-      }
+      {loading ? (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: "var(--text-tertiary)" }}>
+          Loading messages…
+        </div>
+      ) : (
+        <MessageList messages={messages} />
+      )}
 
-      <MessageInput
-        onSend={
-          handleSendMessage
-        }
-      />
+      {typingUser && (
+        <div className="typing-indicator">
+          <div className="typing-dots">
+            <div className="typing-dot" />
+            <div className="typing-dot" />
+            <div className="typing-dot" />
+          </div>
+          {participant?.firstName} is typing…
+        </div>
+      )}
 
+      <MessageInput onSend={handleSendMessage} />
     </main>
   );
 }
