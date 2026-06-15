@@ -5,9 +5,10 @@ function groupByDate(messages) {
   const groups = [];
   let lastDate = null;
   for (const msg of messages) {
-    const date = new Date(msg.createdAt).toLocaleDateString([], {
-      weekday: "long", month: "long", day: "numeric"
-    });
+    const raw = msg.createdAt ? new Date(msg.createdAt) : new Date();
+    const date = isNaN(raw)
+      ? new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })
+      : raw.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
     if (date !== lastDate) {
       groups.push({ type: "date", label: date });
       lastDate = date;
