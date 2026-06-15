@@ -14,7 +14,7 @@ function getAvatarColor(id) {
   return AVATAR_COLORS[(id?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length];
 }
 
-export default function ChatWindow({ conversation, setConversations }) {
+export default function ChatWindow({ conversation, setConversations, onBack, className }) {
   const { socket } = useSocket();
   const { messages, setMessages, loading } = useMessages(conversation?.id);
   const presence = usePresence(conversation?.otherParticipant?.id);
@@ -68,7 +68,7 @@ export default function ChatWindow({ conversation, setConversations }) {
 
   if (!conversation) {
     return (
-      <main className="chat-window-empty">
+      <main className={`chat-window-empty ${className ?? ""}`}>
         <div className="chat-window-empty-icon">💬</div>
         <p>Select a conversation to start chatting</p>
       </main>
@@ -78,11 +78,20 @@ export default function ChatWindow({ conversation, setConversations }) {
   const participant = conversation.otherParticipant;
 
   return (
-    <main className="chat-window">
+    <main className={`chat-window ${className ?? ""}`}>
       <div className="chat-header">
-        <div className={`conv-avatar ${getAvatarColor(participant?.id)}`} style={{ width: 36, height: 36, fontSize: 13 }}>
+        {/* Back button — only visible on mobile via CSS */}
+        <button className="chat-back-btn" onClick={onBack} aria-label="Back to conversations">
+          ‹
+        </button>
+
+        <div
+          className={`conv-avatar ${getAvatarColor(participant?.id)}`}
+          style={{ width: 36, height: 36, fontSize: 13 }}
+        >
           {getInitials(participant)}
         </div>
+
         <div className="chat-header-info">
           <div className="chat-header-name">
             {participant?.firstName} {participant?.lastName}

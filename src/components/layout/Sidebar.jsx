@@ -8,7 +8,7 @@ function getInitials(user) {
   return `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase();
 }
 
-export default function Sidebar({ conversations, loading, error, onSelect, selectedId }) {
+export default function Sidebar({ conversations, loading, error, onSelect, selectedId, className }) {
   const { user, logout } = useAuth();
   const [showSearch, setShowSearch] = useState(false);
   const [filter, setFilter] = useState("");
@@ -21,7 +21,7 @@ export default function Sidebar({ conversations, loading, error, onSelect, selec
     : conversations;
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${className ?? ""}`}>
       <div className="sidebar-header">
         <h2>Wari</h2>
         <div className="sidebar-header-actions">

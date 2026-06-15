@@ -5,7 +5,17 @@ import useConversations from "../hooks/useConversations";
 
 export default function Chat() {
   const [selectedConversation, setSelectedConversation] = useState(null);
+  const [showChat, setShowChat] = useState(false);
   const { conversations, setConversations, loading, error } = useConversations();
+
+  const handleSelect = (conversation) => {
+    setSelectedConversation(conversation);
+    setShowChat(true);
+  };
+
+  const handleBack = () => {
+    setShowChat(false);
+  };
 
   return (
     <div className="chat-layout">
@@ -13,12 +23,15 @@ export default function Chat() {
         conversations={conversations}
         loading={loading}
         error={error}
-        onSelect={setSelectedConversation}
+        onSelect={handleSelect}
         selectedId={selectedConversation?.id}
+        className={showChat ? "hidden" : ""}
       />
       <ChatWindow
         conversation={selectedConversation}
         setConversations={setConversations}
+        onBack={handleBack}
+        className={showChat ? "visible" : ""}
       />
     </div>
   );
