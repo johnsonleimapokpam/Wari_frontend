@@ -1,8 +1,9 @@
 import { useAuth } from "../../context/AuthContext";
 
 function formatTime(dateStr) {
-  if (!dateStr) return "";
-  return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const date = dateStr ? new Date(dateStr) : new Date();
+  if (isNaN(date)) return "";
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function MessageBubble({ message }) {
