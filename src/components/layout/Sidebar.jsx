@@ -2,11 +2,8 @@ import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import ConversationList from "../chat/ConversationList";
 import UserSearchModal from "../users/userSearchModal";
-
-function getInitials(user) {
-  if (!user) return "?";
-  return `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase();
-}
+import { ComposeIcon, LogOutIcon, SearchIcon } from "../ui/Icons";
+import { getAvatarClass, getInitials } from "../../utils/user";
 
 export default function Sidebar({ conversations, loading, error, onSelect, selectedId, className }) {
   const { user, logout } = useAuth();
@@ -14,8 +11,8 @@ export default function Sidebar({ conversations, loading, error, onSelect, selec
   const [filter, setFilter] = useState("");
 
   const filtered = filter.trim()
-    ? conversations.filter((c) => {
-        const name = `${c.otherParticipant?.firstName ?? ""} ${c.otherParticipant?.lastName ?? ""}`.toLowerCase();
+    ? conversations.filter((conversation) => {
+        const name = `${conversation.otherParticipant?.firstName ?? ""} ${conversation.otherParticipant?.lastName ?? ""}`.toLowerCase();
         return name.includes(filter.toLowerCase());
       })
     : conversations;
@@ -23,18 +20,32 @@ export default function Sidebar({ conversations, loading, error, onSelect, selec
   return (
     <aside className={`sidebar ${className ?? ""}`}>
       <div className="sidebar-header">
-        <h2>Wari</h2>
+        <h2 className="sidebar-brand">
+          <span>Wari</span>
+          <span className="brand-dot" aria-hidden="true" />
+        </h2>
+
         <div className="sidebar-header-actions">
-          <button className="icon-btn" onClick={() => setShowSearch(true)} title="New chat" aria-label="New chat">
-            ✏️
+          <button
+            className="icon-btn"
+            type="button"
+            onClick={() => setShowSearch(true)}
+            title="New conversation"
+            aria-label="New conversation"
+          >
+            <ComposeIcon />
           </button>
         </div>
       </div>
 
       <div className="sidebar-search">
         <div className="sidebar-search-wrap">
-          <span className="search-icon">🔍</span>
+          <span className="search-icon">
+            <SearchIcon size={17} />
+          </span>
           <input
+            type="search"
+            aria-label="Search conversations"
             placeholder="Search conversations"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -51,18 +62,26 @@ export default function Sidebar({ conversations, loading, error, onSelect, selec
       />
 
       <div className="sidebar-footer">
-        <div className="my-avatar">{getInitials(user)}</div>
+        <div className={`my-avatar ${getAvatarClass(user?.id || user?.email || "")}`}>
+          {getInitials(user)}
+        </div>
         <span className="my-name">{user?.firstName} {user?.lastName}</span>
-        <button className="logout-btn" onClick={logout} title="Sign out" aria-label="Sign out">
-          ↩
+        <button
+          className="logout-btn"
+          type="button"
+          onClick={logout}
+          title="Sign out"
+          aria-label="Sign out"
+        >
+          <LogOutIcon size={18} />
         </button>
       </div>
 
       {showSearch && (
         <UserSearchModal
           onClose={() => setShowSearch(false)}
-          onConversationCreated={(conv) => {
-            onSelect(conv);
+          onConversationCreated={(conversation) => {
+            onSelect(conversation);
             setShowSearch(false);
           }}
         />
