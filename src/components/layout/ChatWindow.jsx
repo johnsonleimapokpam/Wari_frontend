@@ -5,14 +5,8 @@ import usePresence from "../../hooks/usePresence";
 import MessageList from "../chat/MessageList";
 import MessageInput from "../chat/MessageInput";
 import PresenceBadge from "../presence/PresenceBadge";
-
-const AVATAR_COLORS = ["av-purple", "av-teal"];
-function getInitials(p) {
-  return `${p?.firstName?.[0] ?? ""}${p?.lastName?.[0] ?? ""}`.toUpperCase();
-}
-function getAvatarColor(id) {
-  return AVATAR_COLORS[(id?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length];
-}
+import { ChevronLeftIcon, MessageIcon } from "../ui/Icons";
+import { getAvatarClass, getInitials } from "../../utils/user";
 
 export default function ChatWindow({ conversation, setConversations, onBack, className }) {
   const { socket } = useSocket();
@@ -32,8 +26,8 @@ export default function ChatWindow({ conversation, setConversations, onBack, cla
       const message = payload.message;
       setMessages((prev) => [...prev, message]);
       setConversations((prev) => {
-        const updated = prev.map((c) =>
-          c.id === message.conversationId ? { ...c, lastMessage: message } : c
+        const updated = prev.map((item) =>
+          item.id === message.conversationId ? { ...item, lastMessage: message } : item
         );
         updated.sort((a, b) =>
           new Date(b.lastMessage?.createdAt || 0) - new Date(a.lastMessage?.createdAt || 0)
@@ -69,48 +63,59 @@ export default function ChatWindow({ conversation, setConversations, onBack, cla
   if (!conversation) {
     return (
       <main className={`chat-window-empty ${className ?? ""}`}>
-        <div className="chat-window-empty-icon">💬</div>
-        <p>Select a conversation to start chatting</p>
+        <div className="chat-window-empty-icon" aria-hidden="true">
+          <MessageIcon size={24} />
+        </div>
+        <h2>Pick a conversation.</h2>
+        <p>Your threads are on the left. Start a new one with the pen button.</p>
       </main>
     );
   }
 
   const participant = conversation.otherParticipant;
+  const displayName = `${participant?.firstName ?? ""} ${participant?.lastName ?? ""}`.trim() || "Unknown person";
 
   return (
     <main className={`chat-window ${className ?? ""}`}>
-      <div className="chat-header">
-        {/* Back button — only visible on mobile via CSS */}
-        <button className="chat-back-btn" onClick={onBack} aria-label="Back to conversations">
-          ‹
-        </button>
+      <header className="chat-header">
+        <div className="chat-header-inner">
+          <button
+            className="chat-back-btn"
+            type="button"
+            onClick={onBack}
+            aria-label="Back to conversations"
+          >
+            <ChevronLeftIcon size={20} />
+          </button>
 
-        <div
-          className={`conv-avatar ${getAvatarColor(participant?.id)}`}
-          style={{ width: 36, height: 36, fontSize: 13 }}
-        >
-          {getInitials(participant)}
-        </div>
-
-        <div className="chat-header-info">
-          <div className="chat-header-name">
-            {participant?.firstName} {participant?.lastName}
+          <div className={`conv-avatar chat-header-avatar ${getAvatarClass(participant?.id || displayName)}`}>
+            {getInitials(participant)}
           </div>
-          <PresenceBadge presence={presence} />
+
+          <div className="chat-header-info">
+            <div className="chat-header-name">{displayName}</div>
+            <PresenceBadge presence={presence} />
+          </div>
         </div>
-      </div>
+      </header>
 
       {loading ? (
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: "var(--text-tertiary)" }}>
-          Loading messages…
+        <div className="chat-loading" aria-busy="true" aria-label="Loading messages">
+          <div className="chat-loading-inner">
+            <div className="message-skeleton theirs" />
+            <div className="message-skeleton theirs short" />
+            <div className="message-skeleton mine" />
+            <div className="message-skeleton mine short" />
+            <div className="message-skeleton theirs" />
+          </div>
         </div>
       ) : (
         <MessageList messages={messages} />
       )}
 
       {typingUser && (
-        <div className="typing-indicator">
-          <div className="typing-dots">
+        <div className="typing-indicator" role="status" aria-live="polite">
+          <div className="typing-dots" aria-hidden="true">
             <div className="typing-dot" />
             <div className="typing-dot" />
             <div className="typing-dot" />

@@ -4,17 +4,29 @@ import MessageBubble from "./MessageBubble";
 function groupByDate(messages) {
   const groups = [];
   let lastDate = null;
-  for (const msg of messages) {
-    const raw = msg.createdAt ? new Date(msg.createdAt) : new Date();
-    const date = isNaN(raw)
+  let previousMessage = null;
+
+  for (const message of messages) {
+    const raw = message.createdAt ? new Date(message.createdAt) : new Date();
+    const date = Number.isNaN(raw.getTime())
       ? new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })
       : raw.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+
     if (date !== lastDate) {
       groups.push({ type: "date", label: date });
       lastDate = date;
+      previousMessage = null;
     }
-    groups.push({ type: "message", msg });
+
+    const grouped =
+      previousMessage !== null &&
+      previousMessage.senderId === message.senderId &&
+      Math.abs(new Date(message.createdAt) - new Date(previousMessage.createdAt)) < 5 * 60 * 1000;
+
+    groups.push({ type: "message", message, grouped });
+    previousMessage = message;
   }
+
   return groups;
 }
 
@@ -22,21 +34,34 @@ export default function MessageList({ messages }) {
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    bottomRef.current?.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth" });
   }, [messages]);
 
   const items = groupByDate(messages);
 
   return (
-    <div className="message-list">
-      {items.map((item, i) =>
-        item.type === "date" ? (
-          <div key={`date-${i}`} className="message-date-divider">{item.label}</div>
-        ) : (
-          <MessageBubble key={item.msg.id} message={item.msg} />
-        )
-      )}
-      <div ref={bottomRef} />
+    <div
+      className="message-list"
+      role="log"
+      aria-live="polite"
+      aria-relevant="additions"
+      aria-label="Messages"
+    >
+      <div className="message-list-inner">
+        {items.map((item, index) =>
+          item.type === "date" ? (
+            <div key={`date-${index}`} className="message-date-divider">{item.label}</div>
+          ) : (
+            <MessageBubble
+              key={item.message.id}
+              message={item.message}
+              grouped={item.grouped}
+            />
+          )
+        )}
+        <div ref={bottomRef} />
+      </div>
     </div>
   );
 }

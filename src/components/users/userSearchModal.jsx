@@ -1,22 +1,38 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import api from "../../api/axios";
-
-const AVATAR_COLORS = ["av-purple", "av-teal"];
-function getInitials(u) {
-  return `${u?.firstName?.[0] ?? ""}${u?.lastName?.[0] ?? ""}`.toUpperCase();
-}
-function getAvatarColor(id) {
-  return AVATAR_COLORS[(id?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length];
-}
+import { ChevronRightIcon, CloseIcon, SearchIcon } from "../ui/Icons";
+import { getAvatarClass, getInitials } from "../../utils/user";
 
 export default function UserSearchModal({ onClose, onConversationCreated }) {
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const inputRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onCloseRef.current();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleSearch = async (value) => {
     setQuery(value);
-    if (!value.trim()) { setUsers([]); return; }
+    if (!value.trim()) {
+      setUsers([]);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await api.get(`/users/search?q=${value}`);
@@ -38,48 +54,69 @@ export default function UserSearchModal({ onClose, onConversationCreated }) {
     }
   };
 
-  return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
+  return createPortal(
+    <div className="modal-overlay" onClick={(event) => event.target === event.currentTarget && onClose()}>
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="new-conversation-title">
         <div className="modal-header">
-          <h2>New conversation</h2>
-          <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+          <h2 id="new-conversation-title">New conversation</h2>
+          <button className="modal-close" type="button" onClick={onClose} aria-label="Close">
+            <CloseIcon size={18} />
+          </button>
         </div>
 
         <div className="modal-search">
-          <span className="search-icon">🔍</span>
+          <span className="search-icon">
+            <SearchIcon size={18} />
+          </span>
           <input
-            type="text"
-            placeholder="Search by name or email…"
+            ref={inputRef}
+            type="search"
+            aria-label="Search people by name or email"
+            placeholder="Search by name or email"
             value={query}
-            onChange={(e) => handleSearch(e.target.value)}
-            autoFocus
+            onChange={(event) => handleSearch(event.target.value)}
           />
         </div>
 
-        {loading && <div className="modal-searching">Searching…</div>}
+        <div className="modal-results">
+          {loading && <div className="modal-searching" role="status">Searching…</div>}
 
-        {!loading && query && users.length === 0 && (
-          <div className="modal-empty">No users found</div>
-        )}
+          {!loading && !query && (
+            <div className="modal-empty">Search for someone by name or email.</div>
+          )}
 
-        {users.map((user) => (
-          <div
-            key={user.id}
-            className="user-item"
-            onClick={() => startConversation(user.id)}
-          >
-            <div className={`conv-avatar ${getAvatarColor(user.id)}`}>
-              {getInitials(user)}
-            </div>
-            <div className="user-item-info">
-              <div className="user-item-name">{user.firstName} {user.lastName}</div>
-              <div className="user-item-email">{user.email}</div>
-            </div>
-            <span className="user-item-action">Chat →</span>
-          </div>
-        ))}
+          {!loading && query && users.length === 0 && (
+            <div className="modal-empty">No people found. Try a different name or email.</div>
+          )}
+
+          {users.map((user) => {
+            const displayName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.email;
+
+            return (
+              <button
+                key={user.id}
+                className="user-item"
+                type="button"
+                onClick={() => startConversation(user.id)}
+                aria-label={`Start a conversation with ${displayName}`}
+              >
+                <div className={`conv-avatar ${getAvatarClass(user.id || displayName)}`}>
+                  {getInitials(user)}
+                </div>
+                <div className="user-item-info">
+                  <div className="user-item-name">{displayName}</div>
+                  <div className="user-item-email">{user.email}</div>
+                </div>
+                <span className="user-item-action">
+                  Chat
+                  <ChevronRightIcon size={16} />
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
